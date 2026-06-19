@@ -35,7 +35,7 @@
   const BEAT = 60 / BPM;
   const TRAVEL_TIME = 2.55;
   const HARDCORE_TRAVEL_TIME = TRAVEL_TIME * 1.5;
-  const MAX_PIXEL_RATIO = 1.5;
+  const MAX_PIXEL_RATIO = 2;
   const START_LEAD = 2;
   const SPAWN_Z = -34;
   const HIT_Z = 1.04;
@@ -51,10 +51,10 @@
   const HARDCORE_WALL_COLOR = 0x4bd6e7;
   const HARDCORE_WALL_EMISSIVE = 0x0b5d66;
   const characterSources = {
-    idle: "Gromov.webp",
-    nod: "yesyes.webp",
-    throw: "throw.webp",
-    nono: "nono.webp"
+    idle: "Gromov.png",
+    nod: "yesyes.png",
+    throw: "throw.png",
+    nono: "nono.png"
   };
 
   const characterPreloadImages = Object.values(characterSources).map((source) => {
@@ -1569,6 +1569,7 @@
     const material = new THREE.SpriteMaterial({
       map: getFormulaTexture(noteOrType),
       color: 0xffffff,
+      fog: false,
       transparent: true,
       opacity: 0.96,
       depthTest: false,
