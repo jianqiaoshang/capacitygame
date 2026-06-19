@@ -394,7 +394,7 @@
   if (hardcoreConfirmButton) {
     hardcoreConfirmButton.addEventListener("click", () => startGame("hardcore"));
   }
-  restartButton.addEventListener("click", () => startGame(activeMode));
+  restartButton.addEventListener("click", returnToMainMenu);
 
   for (const button of controlButtons) {
     button.addEventListener("pointerdown", (event) => {
@@ -839,6 +839,42 @@
     scheduleMusic(audioStartAt);
     perfStartAt = performance.now() + Math.max(0, (audioStartAt - audioCtx.currentTime) * 1000);
     updateNextFormula(false, 0);
+  }
+
+  function returnToMainMenu() {
+    stopAudioNodes();
+    clearSceneObjects();
+
+    activeMode = "normal";
+    notes = buildNotes(activeMode);
+    trackLength = getTrackLength(getModeConfig().chart);
+    state = "idle";
+    lives = 3;
+    score = 0;
+    combo = 0;
+    formMode = "sphere";
+    formUntil = 0;
+    shakeAmount = 0;
+    pausedSongTime = 0;
+    nextFormulaNoteId = null;
+    feedbackEl.className = "feedback";
+    feedbackEl.textContent = "";
+    progressEl.style.width = "0%";
+    player.sphere.visible = true;
+    player.wide.visible = false;
+    player.tall.visible = false;
+    player.glow.material.opacity = 0.42;
+    setGromovPose("idle");
+    updateNextFormula(true);
+    updateHud();
+    syncModeUi();
+    syncMobilePauseButton();
+
+    endScreen.classList.remove("active");
+    if (hardcoreRulesScreen) {
+      hardcoreRulesScreen.classList.remove("active");
+    }
+    startScreen.classList.add("active");
   }
 
   function clearSceneObjects() {
