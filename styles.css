@@ -470,6 +470,50 @@ button {
   opacity: 0.42;
 }
 
+.mobile-pause-button {
+  position: absolute;
+  right: max(10px, env(safe-area-inset-right));
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 70px);
+  z-index: 9;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(246, 250, 252, 0.26);
+  border-radius: 8px;
+  background: rgba(8, 11, 14, 0.78);
+  color: var(--text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 14px 32px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  transition:
+    transform 90ms ease,
+    border-color 90ms ease,
+    background 90ms ease;
+}
+
+.mobile-pause-button span {
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.mobile-pause-button.is-visible {
+  display: inline-flex;
+}
+
+.mobile-pause-button:active,
+.mobile-pause-button.active {
+  transform: translateY(2px) scale(0.98);
+  border-color: rgba(243, 188, 75, 0.88);
+  background: rgba(33, 37, 38, 0.9);
+}
+
 .overlay {
   position: absolute;
   inset: 0;

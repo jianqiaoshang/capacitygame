@@ -21,6 +21,7 @@
   const resultScoreEl = document.querySelector("#result-score");
   const controlPadEl = document.querySelector(".control-pad");
   const controlButtons = [...document.querySelectorAll(".key-button")];
+  const mobilePauseButton = document.querySelector("#mobile-pause-button");
 
   if (!window.THREE) {
     startScreen.classList.add("active");
@@ -34,6 +35,7 @@
   const BEAT = 60 / BPM;
   const TRAVEL_TIME = 2.55;
   const HARDCORE_TRAVEL_TIME = TRAVEL_TIME * 1.5;
+  const MAX_PIXEL_RATIO = 1.5;
   const START_LEAD = 2;
   const SPAWN_Z = -34;
   const HIT_Z = 1.04;
@@ -49,16 +51,19 @@
   const HARDCORE_WALL_COLOR = 0x4bd6e7;
   const HARDCORE_WALL_EMISSIVE = 0x0b5d66;
   const characterSources = {
-    idle: "Gromov.png",
-    nod: "yesyes.png",
-    throw: "throw.png",
-    nono: "nono.png"
+    idle: "Gromov.webp",
+    nod: "yesyes.webp",
+    throw: "throw.webp",
+    nono: "nono.webp"
   };
 
-  for (const source of Object.values(characterSources)) {
+  const characterPreloadImages = Object.values(characterSources).map((source) => {
     const image = new Image();
+    image.decoding = "async";
     image.src = source;
-  }
+    if (image.decode) image.decode().catch(() => {});
+    return image;
+  });
 
   const sq = (variable, sub) => ({ variable, sub, sup: "2" });
 
@@ -319,10 +324,9 @@
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
-    preserveDrawingBuffer: true,
     powerPreference: "high-performance"
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(getRendererPixelRatio());
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputEncoding = THREE.sRGBEncoding;
 
@@ -379,7 +383,9 @@
 
   updateHud();
   syncModeUi();
+  syncMobilePauseButton();
   requestAnimationFrame(loop);
+  warmAssetsDuringIdle();
 
   startButton.addEventListener("click", () => startGame("normal"));
   if (hardcoreButton) {
@@ -394,6 +400,15 @@
     button.addEventListener("pointerdown", (event) => {
       event.preventDefault();
       handleAction(button.dataset.action);
+    });
+  }
+
+  if (mobilePauseButton) {
+    mobilePauseButton.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      if (!isMobilePauseAvailable()) return;
+      togglePause();
+      flashMobilePauseButton();
     });
   }
 
@@ -419,7 +434,10 @@
     }
   });
 
-  window.addEventListener("resize", resize);
+  window.addEventListener("resize", () => {
+    resize();
+    syncMobilePauseButton();
+  });
 
   if (new URLSearchParams(window.location.search).has("autostart")) {
     const params = new URLSearchParams(window.location.search);
@@ -518,6 +536,80 @@
       formulaText: noteOrType.formulaText || base.formulaText,
       formulaHtml: noteOrType.formulaHtml || base.formulaHtml
     };
+  }
+
+  function warmAssetsDuringIdle() {
+    const tasks = [];
+    const queueGeometry = (type) => {
+      tasks.push(() => {
+        getWallGeometry(type);
+        getWallEdgeGeometry(type);
+      });
+    };
+    const queueFormula = (noteOrType) => {
+      tasks.push(() => {
+        warmFormulaTexture(noteOrType);
+      });
+    };
+
+    for (const type of ["horizontal", "vertical", "circle", "hardPass", "hardBreak"]) {
+      queueGeometry(type);
+    }
+    for (const type of ["horizontal", "vertical", "circle"]) {
+      queueFormula(type);
+    }
+    for (const formula of hardcoreFormulaPool) {
+      const base = getBaseTypeInfo(formula.type);
+      queueFormula({
+        type: formula.type,
+        formulaKey: `${formula.type}-${formula.id}`,
+        formulaTerms: formula.formulaTerms || formula.formulaText || base.formulaTerms,
+        formulaText: formula.formulaText || base.formulaText,
+        formulaHtml: formula.formulaHtml || base.formulaHtml
+      });
+    }
+
+    const run = (deadline) => {
+      const startedAt = performance.now();
+      while (tasks.length > 0) {
+        tasks.shift()();
+        const elapsed = performance.now() - startedAt;
+        const idleRemaining = deadline && typeof deadline.timeRemaining === "function"
+          ? deadline.timeRemaining()
+          : 0;
+        if (elapsed > 8 || (deadline && idleRemaining < 2)) break;
+      }
+      if (tasks.length > 0) scheduleIdle(run);
+    };
+
+    scheduleIdle(run);
+  }
+
+  function prewarmNotes(noteList) {
+    const geometryTypes = new Set();
+    for (const note of noteList) {
+      geometryTypes.add(note.geometryType || getNoteInfo(note).geometryType || note.type);
+      warmFormulaTexture(note);
+    }
+    for (const geometryType of geometryTypes) {
+      getWallGeometry(geometryType);
+      getWallEdgeGeometry(geometryType);
+    }
+  }
+
+  function warmFormulaTexture(noteOrType) {
+    const texture = getFormulaTexture(noteOrType);
+    if (typeof renderer.initTexture === "function") {
+      renderer.initTexture(texture);
+    }
+  }
+
+  function scheduleIdle(callback) {
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(callback, { timeout: 900 });
+      return;
+    }
+    window.setTimeout(() => callback(null), 16);
   }
 
   function getExpectedAction(note) {
@@ -720,6 +812,7 @@
 
     activeMode = modeConfigs[mode] ? mode : "normal";
     notes = buildNotes(activeMode);
+    prewarmNotes(notes);
     trackLength = getTrackLength(getModeConfig().chart);
     state = "playing";
     lives = 3;
@@ -927,6 +1020,29 @@
       state = "playing";
       showFeedback("继续", "good");
     }
+  }
+
+  function isMobilePauseAvailable() {
+    const touchCapable = navigator.maxTouchPoints > 0;
+    const coarsePointer = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    const mobileUserAgent = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    const mobileViewport = Math.min(window.innerWidth, window.innerHeight) <= 900;
+    return coarsePointer || ((touchCapable || mobileUserAgent) && mobileViewport);
+  }
+
+  function syncMobilePauseButton() {
+    if (!mobilePauseButton) return;
+    const enabled = isMobilePauseAvailable();
+    mobilePauseButton.classList.toggle("is-visible", enabled);
+    mobilePauseButton.setAttribute("aria-hidden", String(!enabled));
+  }
+
+  function flashMobilePauseButton() {
+    if (!mobilePauseButton) return;
+    mobilePauseButton.classList.add("active");
+    window.setTimeout(() => {
+      mobilePauseButton.classList.remove("active");
+    }, 120);
   }
 
   function getSongTime() {
@@ -1711,7 +1827,11 @@
     const height = window.innerHeight;
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(getRendererPixelRatio());
     renderer.setSize(width, height);
+  }
+
+  function getRendererPixelRatio() {
+    return Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
   }
 })();
