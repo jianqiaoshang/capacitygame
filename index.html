@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>辛嵌入节拍</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main id="game-root" aria-label="辛嵌入节拍">
+      <canvas id="scene" aria-label="辛嵌入节拍场景"></canvas>
+      <img
+        id="gromov-character"
+        class="gromov-character"
+        src="Gromov.png"
+        alt=""
+        aria-hidden="true"
+        decoding="async"
+      />
+
+      <section class="hud" aria-label="game status">
+        <div class="topbar">
+          <div class="brand">
+            <span class="brand-mark"></span>
+            <span>辛嵌入节拍</span>
+          </div>
+          <div class="status-strip">
+            <div class="metric">
+              <span class="metric-label">生命</span>
+              <span id="lives" class="lives" aria-live="polite"></span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">得分</span>
+              <strong id="score">0</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-label">连击</span>
+              <strong id="combo">0</strong>
+            </div>
+          </div>
+        </div>
+
+        <div id="next-formula" class="next-formula" aria-label="next wall formula"></div>
+
+        <div id="feedback" class="feedback" aria-live="polite"></div>
+
+        <div class="progress-wrap" aria-hidden="true">
+          <div id="progress" class="progress"></div>
+        </div>
+      </section>
+
+      <div class="control-pad" aria-label="controls">
+        <button class="key-button" data-action="hardPass" aria-label="W 通过">
+          <span class="key">W</span>
+          <span class="shape shape-pass"></span>
+        </button>
+        <button class="key-button" data-action="horizontal" aria-label="A 横形态">
+          <span class="key">A</span>
+          <span class="shape shape-wide"></span>
+        </button>
+        <button class="key-button" data-action="vertical" aria-label="D 竖形态">
+          <span class="key">D</span>
+          <span class="shape shape-tall"></span>
+        </button>
+        <button class="key-button" data-action="circle" aria-label="S 击碎">
+          <span class="key">S</span>
+          <span class="shape shape-dot"></span>
+        </button>
+      </div>
+
+      <section id="start-screen" class="overlay active" aria-label="start screen">
+        <div class="dialog">
+          <h1>辛嵌入节拍</h1>
+          <div class="key-map" aria-hidden="true">
+            <span><b>A</b>横</span>
+            <span><b>S</b>碎</span>
+            <span><b>D</b>竖</span>
+            <span><b>W</b>穿</span>
+          </div>
+          <p class="cheat-note">空格是暂停</p>
+          <div class="mode-actions">
+            <button id="start-button" class="primary-button">普通模式</button>
+            <button id="hardcore-button" class="primary-button">硬核模式</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="hardcore-rules-screen" class="overlay" aria-label="hardcore notation screen">
+        <div class="dialog notation-dialog">
+          <h2>记号约定</h2>
+          <div id="notation-content" class="notation-content" aria-label="notation formulas">
+            <p class="notation-lead">
+              所有最终的流形都是4维的，待嵌入球是
+              <span class="math">B(1)</span>
+            </p>
+            <dl class="notation-list">
+              <div class="notation-row">
+                <dt><span class="math">B(a)</span></dt>
+                <dd>4维球，<span class="math">a</span>表示capacity</dd>
+              </div>
+              <div class="notation-row">
+                <dt><span class="math">D(a)</span></dt>
+                <dd>2维圆盘，<span class="math">a</span>表示面积</dd>
+              </div>
+              <div class="notation-row">
+                <dt><span class="math">E(a,b)</span></dt>
+                <dd>椭球，<span class="math">a</span>和<span class="math">b</span>表示归一化后的半轴参数</dd>
+              </div>
+              <div class="notation-row">
+                <dt><span class="math">P(a,b)</span></dt>
+                <dd>表示多圆盘 <span class="math">D(a)&times;D(b)</span></dd>
+              </div>
+              <div class="notation-row">
+                <dt><span class="math">L(a,b)</span></dt>
+                <dd>
+                  两个圆盘的Lagrangian product, 是
+                  <span class="math">D<sub>p</sub>(&pi;a<sup>2</sup>)&times;D<sub>q</sub>(&pi;b<sup>2</sup>)</span>
+                </dd>
+              </div>
+              <div class="notation-row">
+                <dt><span class="math"><span class="roman">CP</span><sup>k</sup>(a)</span></dt>
+                <dd>
+                  表示复维 <span class="math">k</span> 的复射影空间，归一化为其中一条复射影直线
+                  <span class="math"><span class="roman">CP</span><sup>1</sup></span> 的辛面积为 <span class="math">a</span>
+                </dd>
+              </div>
+              <div class="notation-row">
+                <dt><span class="math">T<sup>2</sup>(a)</span></dt>
+                <dd>2维环面，其面积为<span class="math">a</span></dd>
+              </div>
+              <div class="notation-row">
+                <dt><span class="math">T<sup>2</sup>(a,b)</span></dt>
+                <dd>配备长宽分别为<span class="math">a</span>和<span class="math">b</span>的度量的二维环面</dd>
+              </div>
+              <div class="notation-row">
+                <dt><span class="math">D<sup>*</sup>M</span></dt>
+                <dd>流形<span class="math">M</span>的单位圆盘余切丛</dd>
+              </div>
+              <div class="notation-row">
+                <dt>
+                  <span class="math">𝓜(r<sub>1</sub>,r<sub>2</sub>,r<sub>3</sub>,r<sub>4</sub>,r<sub>5</sub>)</span>
+                </dt>
+                <dd>边长分别为<span class="math">r<sub>1</sub>,r<sub>2</sub>,r<sub>3</sub>,r<sub>4</sub>,r<sub>5</sub></span>的五边形模空间</dd>
+              </div>
+              <div class="notation-row">
+                <dt><span class="math">𝓒</span></dt>
+                <dd>Cartan domain</dd>
+              </div>
+              <div class="notation-row">
+                <dt><span class="math">X<sub>&lambda;</sub></span></dt>
+                <dd>
+                  <span class="math">X<sub>&lambda;</sub>:=<span class="sqrt"><span>&lambda;</span></span>(K&times;T)</span>
+                  其中<span class="math">K&times;T</span>来自Haim-Kislev-Ostrover的例子
+                </dd>
+              </div>
+              <div class="notation-row">
+                <dt><span class="math">&Omega;<sub>A;u,v;B</sub></span></dt>
+                <dd>
+                  平面上经过<span class="math">(0,0)</span>、<span class="math">(A,0)</span>、
+                  <span class="math">(u,v)</span>、<span class="math">(0,B)</span>的折线围成区域对应的toric domain
+                </dd>
+              </div>
+            </dl>
+          </div>
+          <button id="hardcore-confirm-button" class="primary-button">确认</button>
+        </div>
+      </section>
+
+      <section id="end-screen" class="overlay" aria-label="result screen">
+        <div class="dialog">
+          <div id="result-kicker" class="dialog-kicker">Game Over</div>
+          <h2 id="result-title">游戏结束</h2>
+          <p id="result-score">得分 0</p>
+          <button id="restart-button" class="primary-button">再来一次</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="vendor/three.min.js"></script>
+    <script src="game.js"></script>
+  </body>
+</html>
